@@ -1,0 +1,30 @@
+Package: sparseGFM
+Type: Package
+Title: Sparse Generalized Factor Models with Multiple Penalty Functions
+Version: 0.1.0
+Author: Zhijing Wang
+Maintainer: Zhijing Wang <wangzhijing@sjtu.edu.cn>
+Description: Implements sparse generalized factor models (sparseGFM) for dimension reduction 
+    and variable selection in high-dimensional data. The package supports multiple data types 
+    including continuous, count, and binary data through appropriate generalized linear model 
+    frameworks. It provides a comprehensive suite of penalty functions including Lasso, 
+    adaptive Lasso, SCAD, MCP, and their group versions for inducing sparsity in factor 
+    loadings. The package includes automatic selection procedures for both the regularization 
+    parameter (via cross-validation with SIC) and the number of latent factors (via information 
+    criteria). This methodology is particularly useful for analyzing high-dimensional data in 
+    genomics, economics, and social sciences where interpretable dimension reduction is crucial.
+License: GPL (>= 3)
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    stats,
+    GFM,
+    MASS,
+    irlba
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+RoxygenNote: 7.3.2
+URL: https://github.com/zjwang1013/sparseGFM
+BugReports: https://github.com/zjwang1013/sparseGFM/issues
