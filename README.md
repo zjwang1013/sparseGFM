@@ -169,12 +169,8 @@ The package implements 12 different penalty functions:
 
 ## Missing Data
 
-The package automatically handles missing values through mean imputation:
-- Continuous data: Column means
-- Count data: Rounded column means
-- Binary data: Rounded column means (0 or 1)
+The package automatically handles missing values.
 
-Rows or columns with all missing values will trigger an error and should be removed before analysis.
 
 ## Methodological Details
 
@@ -183,16 +179,8 @@ The sparseGFM algorithm employs:
 2. **Alternating minimization**: Iteratively updating factors (F) and loadings (B)
 3. **Sparsity induction**: Applying various penalty functions to achieve variable selection
 4. **Identifiability**: Ensuring unique solutions through SVD-based constraints
-5. **Convergence**: Monitoring Frobenius norm changes until convergence
+5. **Convergence**: Monitoring objective function changes until convergence
 
-## Citation
-
-If you use sparseGFM in your research, please cite:
-
-```
-Wang, Z. (2024). sparseGFM: Sparse Generalized Factor Models with Multiple Penalty Functions. 
-R package version 0.1.0. https://github.com/zjwang1013/sparseGFM
-```
 
 ## Bug Reports and Issues
 
@@ -206,12 +194,6 @@ Please report any bugs or issues on the [GitHub Issues page](https://github.com/
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss proposed modifications.
-
-## Author
-
-**Zhijing Wang**  
-Email: wangzhijing@sjtu.edu.cn  
-Shanghai Jiao Tong University
 
 ## License
 
