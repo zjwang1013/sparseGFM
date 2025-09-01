@@ -2,7 +2,7 @@
 % Please edit documentation in R/sparseGFM.R
 \name{facnum.sparseGFM}
 \alias{facnum.sparseGFM}
-\title{Factor Number Selection for Sparse Generalized Factor Model}
+\title{Determine the Number of Factors for Sparse Generalized Factor Model}
 \usage{
 facnum.sparseGFM(
   x,
@@ -28,7 +28,8 @@ facnum.sparseGFM(
 
 \item{q_range}{Integer vector of factor numbers to evaluate (default = 1:5)}
 
-\item{penalty}{Character string specifying the penalty type (see sparseGFM for options)}
+\item{penalty}{Character string specifying the penalty type. See sparseGFM for all 12 available options.
+Recommended: "aglasso" for row-sparse loading matrices}
 
 \item{lambda_range}{Numeric vector of lambda values for cross-validation (default = seq(0.1, 1, by = 0.1))}
 
@@ -74,22 +75,55 @@ A list containing:
 }
 \description{
 Determines the optimal number of factors for sparse generalized factor models
-using information criteria (SIC - Sparsity Information Criterion variants).
+using multiple information criteria (SIC - Sparsity Information Criterion variants).
+The method can effectively handle weak factor scenarios and high-dimensional data
+with sparse loading structures.
 }
 \details{
 For each q value, the function performs cross-validation to select optimal lambda,
 then calculates various SIC measures. The optimal q minimizes the selected SIC.
-This provides automatic selection of the latent dimension in factor models.
+This provides automatic selection of the latent dimension in factor models,
+with particular effectiveness in weak factor scenarios where traditional methods
+may struggle.
 }
 \examples{
-\dontrun{
-# Generate example data
-n <- 100; p <- 50
-x <- matrix(rnorm(n*p), n, p)
+\donttest{
+# Generate data with sparse loading structure
+library(sparseGFM)
+set.seed(123)
+n <- 200; p <- 200; q <- 2
+a_param <- 0.9; s <- ceiling(p^a_param)
 
-# Select optimal number of factors
-facnum_result <- facnum.sparseGFM(x, type = "continuous", q_range = 1:5, penalty = "lasso")
-optimal_q <- facnum_result$optimal_q
+FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+            matrix(0, nrow = (p - s), ncol = q))
+alpha_true <- runif(p, min = -1, max = 1)
+
+ident_res <- add_identifiability(FF, BB, alpha_true)
+FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+
+mat_para <- FF0 \%*\% t(BB0) + as.matrix(rep(1, n)) \%*\% t(as.matrix(alpha0))
+x <- matrix(nrow = n, ncol = p)
+for (i in 1:n) {
+  for (j in 1:p) {
+    x[i, j] <- rnorm(1, mean = mat_para[i, j])
+  }
+}
+
+# Determine optimal number of factors using multiple criteria
+facnum_result <- facnum.sparseGFM(x, type = "continuous",
+                                  q_range = 1:5, penalty = "aglasso",
+                                  lambda_range = c(0.1), sic_type = "sic1",
+                                  C = 6, verbose = FALSE)
+
+# Extract optimal factor numbers from different criteria
+optimal_q_sic1 <- facnum_result$optimal_q
+optimal_q_sic2 <- which.min(facnum_result$sic2)
+optimal_q_sic3 <- which.min(facnum_result$sic3)
+optimal_q_sic4 <- which.min(facnum_result$sic4)
+
+print(paste("Optimal q (SIC1):", optimal_q_sic1))
+print(paste("Optimal q (SIC2):", optimal_q_sic2))
 }
 
 }

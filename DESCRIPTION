@@ -2,17 +2,19 @@ Package: sparseGFM
 Type: Package
 Title: Sparse Generalized Factor Models with Multiple Penalty Functions
 Version: 0.1.0
-Author: Zhijing Wang
-Maintainer: Zhijing Wang <wangzhijing@sjtu.edu.cn>
+Authors@R: person("Zhijing", "Wang", email = "wangzhijing@sjtu.edu.cn", role = c("aut", "cre"))
 Description: Implements sparse generalized factor models (sparseGFM) for dimension reduction 
-    and variable selection in high-dimensional data. The package supports multiple data types 
-    including continuous, count, and binary data through appropriate generalized linear model 
-    frameworks. It provides a comprehensive suite of penalty functions including Lasso, 
-    adaptive Lasso, SCAD, MCP, and their group versions for inducing sparsity in factor 
-    loadings. The package includes automatic selection procedures for both the regularization 
-    parameter (via cross-validation with SIC) and the number of latent factors (via information 
-    criteria). This methodology is particularly useful for analyzing high-dimensional data in 
-    genomics, economics, and social sciences where interpretable dimension reduction is crucial.
+    and variable selection in high-dimensional data with automatic adaptation to weak factor 
+    scenarios. The package supports multiple data types (continuous, count, binary) through 
+    generalized linear model frameworks and handles missing values automatically. It provides 
+    12 different penalty functions including Lasso, adaptive Lasso, SCAD, MCP, group Lasso, 
+    and their adaptive versions for inducing row-wise sparsity in factor loadings. Key features 
+    include cross-validation for regularization parameter selection using Sparsity Information 
+    Criteria (SIC), automatic determination of the number of factors via multiple information 
+    criteria, and specialized algorithms for row-sparse loading structures. The methodology 
+    employs alternating minimization with SVD-based identifiability constraints and is 
+    particularly effective for high-dimensional applications in genomics, economics, and 
+    social sciences where interpretable sparse dimension reduction is crucial.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true

@@ -28,7 +28,8 @@ cv.sparseGFM(
 
 \item{q}{Integer specifying the number of latent factors (default = 2)}
 
-\item{penalty}{Character string specifying the penalty type (see sparseGFM for options)}
+\item{penalty}{Character string specifying the penalty type. See sparseGFM for all 12 available options.
+Recommended: "aglasso" for row-sparse loading matrices}
 
 \item{lambda_range}{Numeric vector of lambda values to evaluate (default = seq(0.1, 1, by = 0.1))}
 
@@ -68,22 +69,47 @@ A list containing:
 }
 \description{
 Performs cross-validation to select the optimal lambda parameter for sparse generalized
-factor models using SIC (Sparsity Information Criterion).
+factor models using SIC (Sparsity Information Criterion). The method can handle weak
+factor scenarios and is particularly effective for row-sparse loading structures.
 }
 \details{
 The function fits sparse GFM models for each lambda value in lambda_range and
 calculates two types of SIC for model selection. The optimal lambda is chosen
-as the one minimizing the selected SIC criterion.
+as the one minimizing the selected SIC criterion. The method automatically handles
+missing values and adapts to weak factor structures.
 }
 \examples{
-\dontrun{
-# Generate example data
-n <- 100; p <- 50
-x <- matrix(rnorm(n*p), n, p)
+\donttest{
+# Generate data with sparse loading structure
+library(sparseGFM)
+set.seed(123)
+n <- 200; p <- 200; q <- 2
+a_param <- 0.9; s <- ceiling(p^a_param)
 
-# Cross-validation for lambda selection
-cv_result <- cv.sparseGFM(x, type = "continuous", q = 2, penalty = "lasso")
-optimal_lambda <- cv_result$optimal_lambda
+FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+            matrix(0, nrow = (p - s), ncol = q))
+alpha_true <- runif(p, min = -1, max = 1)
+
+ident_res <- add_identifiability(FF, BB, alpha_true)
+FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+
+mat_para <- FF0 \%*\% t(BB0) + as.matrix(rep(1, n)) \%*\% t(as.matrix(alpha0))
+x <- matrix(nrow = n, ncol = p)
+for (i in 1:n) {
+  for (j in 1:p) {
+    x[i, j] <- rnorm(1, mean = mat_para[i, j])
+  }
+}
+
+# Cross-validation for optimal lambda selection
+cv_result <- cv.sparseGFM(x, type = "continuous", q = 2,
+                          penalty = "aglasso", C = 5,
+                          lambda_range = seq(0.1, 1, by = 0.1),
+                          verbose = FALSE)
+
+print(paste("Optimal lambda:", cv_result$optimal_lambda))
+optimal_model <- cv_result$optimal_model
 }
 
 }

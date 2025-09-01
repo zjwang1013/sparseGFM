@@ -2,18 +2,44 @@
 % Please edit documentation in R/sparseGFM.R
 \name{evaluate_performance}
 \alias{evaluate_performance}
-\title{Evaluate Binary Classification Performance}
+\title{Evaluate Variable Selection Performance}
 \usage{
 evaluate_performance(true_vector, pred_vector)
 }
 \arguments{
-\item{true_vector}{True selection indicator vector}
+\item{true_vector}{True binary vector indicating selected variables (0/1)}
 
-\item{pred_vector}{Predicted selection indicator vector}
+\item{pred_vector}{Predicted binary vector indicating selected variables (0/1)}
 }
 \value{
-List containing confusion matrix and performance metrics (accuracy, precision, recall, etc.)
+A list containing performance metrics:
+\itemize{
+  \item sensitivity: True positive rate
+  \item specificity: True negative rate
+  \item precision: Positive predictive value
+  \item f1_score: F1 score
+  \item accuracy: Overall accuracy
+}
 }
 \description{
-Calculate various performance metrics for variable selection
+Calculate performance metrics for variable selection including sensitivity,
+specificity, and other classification measures.
+}
+\details{
+This function evaluates the performance of variable selection methods by
+comparing predicted selections against the true sparse structure.
+}
+\examples{
+\donttest{
+# Generate example selection vectors
+set.seed(123)
+p <- 100
+true_selected <- c(rep(1, 20), rep(0, 80))  # First 20 variables selected
+pred_selected <- c(rep(1, 18), rep(0, 2), rep(1, 5), rep(0, 75))  # Some errors
+
+# Evaluate performance
+perf <- evaluate_performance(true_selected, pred_selected)
+print(perf)
+}
+
 }

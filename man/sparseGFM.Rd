@@ -2,7 +2,7 @@
 % Please edit documentation in R/sparseGFM.R
 \name{sparseGFM}
 \alias{sparseGFM}
-\title{Sparse Generalized Factor Model}
+\title{Sparse Generalized Factor Model with Multiple Penalty Functions}
 \usage{
 sparseGFM(
   x,
@@ -33,18 +33,14 @@ and p is the number of variables}
 
 \item{q}{Integer specifying the number of latent factors (default = 2)}
 
-\item{penalty}{Character string specifying the penalty type for sparsity. Options include:
+\item{penalty}{Character string specifying the penalty type for sparsity. Available options:
 \itemize{
-  \item "lasso": L1 penalty
-  \item "alasso": Adaptive lasso penalty
-  \item "SCAD": Smoothly clipped absolute deviation penalty
-  \item "MCP": Minimax concave penalty
-  \item "group"/"glasso": Group lasso penalty
-  \item "agroup"/"aglasso": Adaptive group lasso penalty
-  \item "gSCAD": Group SCAD penalty
-  \item "agSCAD": Adaptive group SCAD penalty
-  \item "gMCP": Group MCP penalty
-  \item "agMCP": Adaptive group MCP penalty
+  \item "lasso": L1 penalty (adaptive version: "alasso")
+  \item "SCAD": Smoothly clipped absolute deviation penalty (adaptive: "agSCAD")
+  \item "MCP": Minimax concave penalty (adaptive: "agMCP")
+  \item "group"/"glasso": Group lasso penalty (adaptive: "agroup"/"aglasso")
+  \item "gSCAD": Group SCAD penalty (adaptive: "agSCAD")
+  \item "gMCP": Group MCP penalty (adaptive: "agMCP")
 }}
 
 \item{lambda}{Numeric value for the penalty tuning parameter (default = 1)}
@@ -78,23 +74,56 @@ A list containing:
 }
 }
 \description{
-Implements sparse generalized factor models with various penalty functions for dimension reduction
-and variable selection in high-dimensional data with different data types (continuous, count, binary).
+Implements sparse generalized factor models with 12 different penalty functions for dimension reduction
+and variable selection in high-dimensional data. The method is designed to handle row-sparse loading
+structures and can adapt to weak factor scenarios where factors have relatively small eigenvalues.
+Missing values are automatically handled through imputation.
 }
 \details{
-The function implements an alternating minimization algorithm that iteratively updates
-the factor matrix F and loading matrix B until convergence. Missing values are imputed
-using column means (rounded for count/binary data). The algorithm includes identifiability
-constraints and various penalty functions for inducing sparsity in the loading matrix.
+The algorithm employs alternating minimization with the following steps:
+1. Initialization using the GFM package for initial estimates
+2. Iteratively updating factors (F) and loadings (B)
+3. Applying penalty functions to achieve variable selection
+4. Ensuring identifiability through SVD-based constraints
+5. Monitoring convergence through objective function changes
+
+The adaptive group lasso (aglasso) penalty is particularly effective for row-sparse
+loading matrices as it can select entire rows (variables) rather than individual elements.
 }
 \examples{
-\dontrun{
-# Generate example data
-n <- 100; p <- 50
-x <- matrix(rnorm(n*p), n, p)
+\donttest{
+# Generate data with sparse loading matrix
+library(sparseGFM)
+set.seed(123)
+n <- 200; p <- 200; q <- 2
+a_param <- 0.9
+s <- ceiling(p^a_param)
 
-# Fit sparse GFM with lasso penalty
-result <- sparseGFM(x, type = "continuous", q = 2, penalty = "lasso", lambda = 0.5)
+# Generate factors and sparse loadings
+FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+            matrix(0, nrow = (p - s), ncol = q))
+alpha_true <- runif(p, min = -1, max = 1)
+
+# Apply identifiability constraints
+ident_res <- add_identifiability(FF, BB, alpha_true)
+FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+
+# Generate data matrix
+mat_para <- FF0 \%*\% t(BB0) + as.matrix(rep(1, n)) \%*\% t(as.matrix(alpha0))
+x <- matrix(nrow = n, ncol = p)
+for (i in 1:n) {
+  for (j in 1:p) {
+    x[i, j] <- rnorm(1, mean = mat_para[i, j])
+  }
+}
+
+# Fit sparse GFM with adaptive group lasso
+result <- sparseGFM(x, type = "continuous", q = 2,
+                    penalty = "aglasso", lambda = 0.1, C = 5)
+
+# View results
+print(paste("Selected variables:", length(setdiff(1:p, result$index))))
 }
 
 }

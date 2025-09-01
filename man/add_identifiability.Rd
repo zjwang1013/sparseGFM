@@ -17,5 +17,8 @@ add_identifiability(H, B, mu)
 List with constrained H, B, and mu matrices
 }
 \description{
-Internal function to ensure identifiability of factor and loading matrices
+Apply identifiability constraints to ensure unique solutions for factor and loading matrices
+}
+\details{
+This function applies SVD-based identifiability constraints to factor models
 }

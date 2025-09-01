@@ -3,12 +3,13 @@
 #' @importFrom MASS ginv
 #' @importFrom irlba irlba
 NULL
-
-#' Sparse Generalized Factor Model
+#' Sparse Generalized Factor Model with Multiple Penalty Functions
 #'
 #' @description
-#' Implements sparse generalized factor models with various penalty functions for dimension reduction
-#' and variable selection in high-dimensional data with different data types (continuous, count, binary).
+#' Implements sparse generalized factor models with 12 different penalty functions for dimension reduction
+#' and variable selection in high-dimensional data. The method is designed to handle row-sparse loading
+#' structures and can adapt to weak factor scenarios where factors have relatively small eigenvalues.
+#' Missing values are automatically handled through imputation.
 #'
 #' @param x A numeric matrix of observations (n x p), where n is the number of observations
 #'        and p is the number of variables
@@ -19,18 +20,14 @@ NULL
 #'          \item "binary": Binomial family for binary data
 #'        }
 #' @param q Integer specifying the number of latent factors (default = 2)
-#' @param penalty Character string specifying the penalty type for sparsity. Options include:
+#' @param penalty Character string specifying the penalty type for sparsity. Available options:
 #'        \itemize{
-#'          \item "lasso": L1 penalty
-#'          \item "alasso": Adaptive lasso penalty
-#'          \item "SCAD": Smoothly clipped absolute deviation penalty
-#'          \item "MCP": Minimax concave penalty
-#'          \item "group"/"glasso": Group lasso penalty
-#'          \item "agroup"/"aglasso": Adaptive group lasso penalty
-#'          \item "gSCAD": Group SCAD penalty
-#'          \item "agSCAD": Adaptive group SCAD penalty
-#'          \item "gMCP": Group MCP penalty
-#'          \item "agMCP": Adaptive group MCP penalty
+#'          \item "lasso": L1 penalty (adaptive version: "alasso")
+#'          \item "SCAD": Smoothly clipped absolute deviation penalty (adaptive: "agSCAD")
+#'          \item "MCP": Minimax concave penalty (adaptive: "agMCP")
+#'          \item "group"/"glasso": Group lasso penalty (adaptive: "agroup"/"aglasso")
+#'          \item "gSCAD": Group SCAD penalty (adaptive: "agSCAD")
+#'          \item "gMCP": Group MCP penalty (adaptive: "agMCP")
 #'        }
 #' @param lambda Numeric value for the penalty tuning parameter (default = 1)
 #' @param gam Numeric value for the adaptive weight parameter in adaptive penalties (default = 1)
@@ -55,19 +52,50 @@ NULL
 #' }
 #'
 #' @details
-#' The function implements an alternating minimization algorithm that iteratively updates
-#' the factor matrix F and loading matrix B until convergence. Missing values are imputed
-#' using column means (rounded for count/binary data). The algorithm includes identifiability
-#' constraints and various penalty functions for inducing sparsity in the loading matrix.
+#' The algorithm employs alternating minimization with the following steps:
+#' 1. Initialization using the GFM package for initial estimates
+#' 2. Iteratively updating factors (F) and loadings (B)
+#' 3. Applying penalty functions to achieve variable selection
+#' 4. Ensuring identifiability through SVD-based constraints
+#' 5. Monitoring convergence through objective function changes
+#'
+#' The adaptive group lasso (aglasso) penalty is particularly effective for row-sparse
+#' loading matrices as it can select entire rows (variables) rather than individual elements.
 #'
 #' @examples
-#' \dontrun{
-#' # Generate example data
-#' n <- 100; p <- 50
-#' x <- matrix(rnorm(n*p), n, p)
+#' \donttest{
+#' # Generate data with sparse loading matrix
+#' library(sparseGFM)
+#' set.seed(123)
+#' n <- 200; p <- 200; q <- 2
+#' a_param <- 0.9
+#' s <- ceiling(p^a_param)
 #'
-#' # Fit sparse GFM with lasso penalty
-#' result <- sparseGFM(x, type = "continuous", q = 2, penalty = "lasso", lambda = 0.5)
+#' # Generate factors and sparse loadings
+#' FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+#' BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+#'             matrix(0, nrow = (p - s), ncol = q))
+#' alpha_true <- runif(p, min = -1, max = 1)
+#'
+#' # Apply identifiability constraints
+#' ident_res <- add_identifiability(FF, BB, alpha_true)
+#' FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+#'
+#' # Generate data matrix
+#' mat_para <- FF0 %*% t(BB0) + as.matrix(rep(1, n)) %*% t(as.matrix(alpha0))
+#' x <- matrix(nrow = n, ncol = p)
+#' for (i in 1:n) {
+#'   for (j in 1:p) {
+#'     x[i, j] <- rnorm(1, mean = mat_para[i, j])
+#'   }
+#' }
+#'
+#' # Fit sparse GFM with adaptive group lasso
+#' result <- sparseGFM(x, type = "continuous", q = 2,
+#'                     penalty = "aglasso", lambda = 0.1, C = 5)
+#'
+#' # View results
+#' print(paste("Selected variables:", length(setdiff(1:p, result$index))))
 #' }
 #'
 #' @export
@@ -540,12 +568,14 @@ sparseGFM <- function(x, type = c("continuous", "count", "binary"),
 #'
 #' @description
 #' Performs cross-validation to select the optimal lambda parameter for sparse generalized
-#' factor models using SIC (Sparsity Information Criterion).
+#' factor models using SIC (Sparsity Information Criterion). The method can handle weak
+#' factor scenarios and is particularly effective for row-sparse loading structures.
 #'
 #' @param x A numeric matrix of observations (n x p)
 #' @param type Character string specifying the data type ("continuous", "count", or "binary")
 #' @param q Integer specifying the number of latent factors (default = 2)
-#' @param penalty Character string specifying the penalty type (see sparseGFM for options)
+#' @param penalty Character string specifying the penalty type. See sparseGFM for all 12 available options.
+#'        Recommended: "aglasso" for row-sparse loading matrices
 #' @param lambda_range Numeric vector of lambda values to evaluate (default = seq(0.1, 1, by = 0.1))
 #' @param gam Numeric value for the adaptive weight parameter (default = 1)
 #' @param tau Numeric value for the shape parameter in SCAD/MCP penalties
@@ -576,17 +606,41 @@ sparseGFM <- function(x, type = c("continuous", "count", "binary"),
 #' @details
 #' The function fits sparse GFM models for each lambda value in lambda_range and
 #' calculates two types of SIC for model selection. The optimal lambda is chosen
-#' as the one minimizing the selected SIC criterion.
+#' as the one minimizing the selected SIC criterion. The method automatically handles
+#' missing values and adapts to weak factor structures.
 #'
 #' @examples
-#' \dontrun{
-#' # Generate example data
-#' n <- 100; p <- 50
-#' x <- matrix(rnorm(n*p), n, p)
+#' \donttest{
+#' # Generate data with sparse loading structure
+#' library(sparseGFM)
+#' set.seed(123)
+#' n <- 200; p <- 200; q <- 2
+#' a_param <- 0.9; s <- ceiling(p^a_param)
 #'
-#' # Cross-validation for lambda selection
-#' cv_result <- cv.sparseGFM(x, type = "continuous", q = 2, penalty = "lasso")
-#' optimal_lambda <- cv_result$optimal_lambda
+#' FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+#' BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+#'             matrix(0, nrow = (p - s), ncol = q))
+#' alpha_true <- runif(p, min = -1, max = 1)
+#'
+#' ident_res <- add_identifiability(FF, BB, alpha_true)
+#' FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+#'
+#' mat_para <- FF0 %*% t(BB0) + as.matrix(rep(1, n)) %*% t(as.matrix(alpha0))
+#' x <- matrix(nrow = n, ncol = p)
+#' for (i in 1:n) {
+#'   for (j in 1:p) {
+#'     x[i, j] <- rnorm(1, mean = mat_para[i, j])
+#'   }
+#' }
+#'
+#' # Cross-validation for optimal lambda selection
+#' cv_result <- cv.sparseGFM(x, type = "continuous", q = 2,
+#'                           penalty = "aglasso", C = 5,
+#'                           lambda_range = seq(0.1, 1, by = 0.1),
+#'                           verbose = FALSE)
+#'
+#' print(paste("Optimal lambda:", cv_result$optimal_lambda))
+#' optimal_model <- cv_result$optimal_model
 #' }
 #'
 #' @export
@@ -691,16 +745,19 @@ cv.sparseGFM <- function(x,
 
 
 
-#' Factor Number Selection for Sparse Generalized Factor Model
+#' Determine the Number of Factors for Sparse Generalized Factor Model
 #'
 #' @description
 #' Determines the optimal number of factors for sparse generalized factor models
-#' using information criteria (SIC - Sparsity Information Criterion variants).
+#' using multiple information criteria (SIC - Sparsity Information Criterion variants).
+#' The method can effectively handle weak factor scenarios and high-dimensional data
+#' with sparse loading structures.
 #'
 #' @param x A numeric matrix of observations (n x p)
 #' @param type Character string specifying the data type ("continuous", "count", or "binary")
 #' @param q_range Integer vector of factor numbers to evaluate (default = 1:5)
-#' @param penalty Character string specifying the penalty type (see sparseGFM for options)
+#' @param penalty Character string specifying the penalty type. See sparseGFM for all 12 available options.
+#'        Recommended: "aglasso" for row-sparse loading matrices
 #' @param lambda_range Numeric vector of lambda values for cross-validation (default = seq(0.1, 1, by = 0.1))
 #' @param gam Numeric value for the adaptive weight parameter (default = 1)
 #' @param tau Numeric value for the shape parameter in SCAD/MCP penalties
@@ -737,17 +794,48 @@ cv.sparseGFM <- function(x,
 #' @details
 #' For each q value, the function performs cross-validation to select optimal lambda,
 #' then calculates various SIC measures. The optimal q minimizes the selected SIC.
-#' This provides automatic selection of the latent dimension in factor models.
+#' This provides automatic selection of the latent dimension in factor models,
+#' with particular effectiveness in weak factor scenarios where traditional methods
+#' may struggle.
 #'
 #' @examples
-#' \dontrun{
-#' # Generate example data
-#' n <- 100; p <- 50
-#' x <- matrix(rnorm(n*p), n, p)
+#' \donttest{
+#' # Generate data with sparse loading structure
+#' library(sparseGFM)
+#' set.seed(123)
+#' n <- 200; p <- 200; q <- 2
+#' a_param <- 0.9; s <- ceiling(p^a_param)
 #'
-#' # Select optimal number of factors
-#' facnum_result <- facnum.sparseGFM(x, type = "continuous", q_range = 1:5, penalty = "lasso")
-#' optimal_q <- facnum_result$optimal_q
+#' FF <- matrix(runif(n * q, min = -3, max = 3), nrow = n, ncol = q)
+#' BB <- rbind(matrix(runif(s * q, min = 1, max = 2), nrow = s, ncol = q),
+#'             matrix(0, nrow = (p - s), ncol = q))
+#' alpha_true <- runif(p, min = -1, max = 1)
+#'
+#' ident_res <- add_identifiability(FF, BB, alpha_true)
+#' FF0 <- ident_res$H; BB0 <- ident_res$B; alpha0 <- ident_res$mu
+#'
+#' mat_para <- FF0 %*% t(BB0) + as.matrix(rep(1, n)) %*% t(as.matrix(alpha0))
+#' x <- matrix(nrow = n, ncol = p)
+#' for (i in 1:n) {
+#'   for (j in 1:p) {
+#'     x[i, j] <- rnorm(1, mean = mat_para[i, j])
+#'   }
+#' }
+#'
+#' # Determine optimal number of factors using multiple criteria
+#' facnum_result <- facnum.sparseGFM(x, type = "continuous",
+#'                                   q_range = 1:5, penalty = "aglasso",
+#'                                   lambda_range = c(0.1), sic_type = "sic1",
+#'                                   C = 6, verbose = FALSE)
+#'
+#' # Extract optimal factor numbers from different criteria
+#' optimal_q_sic1 <- facnum_result$optimal_q
+#' optimal_q_sic2 <- which.min(facnum_result$sic2)
+#' optimal_q_sic3 <- which.min(facnum_result$sic3)
+#' optimal_q_sic4 <- which.min(facnum_result$sic4)
+#'
+#' print(paste("Optimal q (SIC1):", optimal_q_sic1))
+#' print(paste("Optimal q (SIC2):", optimal_q_sic2))
 #' }
 #'
 #' @export
@@ -912,39 +1000,10 @@ facnum.sparseGFM <- function(x,
 
 
 
-
-
-#' Apply Identifiability Constraints
-#' @description Internal function to ensure identifiability of factor and loading matrices
-#' @param H Factor matrix (n x q)
-#' @param B Loading matrix (p x q)
-#' @param mu Intercept vector (p x 1)
-#' @return List with constrained H, B, and mu matrices
-
-
-add_identifiability <- function(H, B, mu){
-  # Load the irlba library
-  #library(irlba)
-
-  # Perform SVD decomposition with rank k = 10
-
-  mu <- mu + B %*% colMeans(H)
-  q <- ncol(H); n <- nrow(H)
-  svdHB <- irlba((H- matrix(colMeans(H), n, q, byrow = TRUE)) %*% t(B), nv= q)
-  signB1 <- sign(svdHB$v[1,])
-  H <- sqrt(n) * svdHB$u %*% Diag(signB1)
-
-  B <- svdHB$v %*% Diag(svdHB$d[1:q]*signB1) / sqrt(n)
-
-  return(list(H=H, B=B, mu=mu))
-}
-
-#' Create Diagonal Matrix
-#' @description Internal helper to create diagonal matrix from vector
-#' @param vec Numeric vector
-#' @return Diagonal matrix with vec on diagonal
+#' Diagonal matrix function
+#' @description Internal function to create diagonal matrices
+#' @param x Numeric vector or scalar
 #' @noRd
-#' @keywords internal
 Diag=function(vec){
   q <- length(vec)
   if(q > 1){
@@ -955,6 +1014,29 @@ Diag=function(vec){
   return(y)
 }
 
+
+#' Apply Identifiability Constraints
+#' @description Apply identifiability constraints to ensure unique solutions for factor and loading matrices
+#' @param H Factor matrix (n x q)
+#' @param B Loading matrix (p x q)
+#' @param mu Intercept vector (p x 1)
+#' @return List with constrained H, B, and mu matrices
+#' @details This function applies SVD-based identifiability constraints to factor models
+#' @export
+add_identifiability <- function(H, B, mu){
+  # Load the irlba library
+  #library(irlba)
+  # Perform SVD decomposition with rank k = 10
+  mu <- mu + B %*% colMeans(H)
+  q <- ncol(H); n <- nrow(H)
+  svdHB <- irlba::irlba((H- matrix(colMeans(H), n, q, byrow = TRUE)) %*% t(B), nv= q)
+  signB1 <- sign(svdHB$v[1,])
+  H <- sqrt(n) * svdHB$u %*% Diag(signB1)
+  B <- svdHB$v %*% Diag(svdHB$d[1:q]*signB1) / sqrt(n)
+  return(list(H=H, B=B, mu=mu))
+}
+
+
 #' Measure Factor Space Recovery
 #' @description Calculate recovery metrics between estimated and true factor spaces
 #' @param hH Estimated factor matrix
@@ -962,7 +1044,6 @@ Diag=function(vec){
 #' @param type Metric type ("trace_statistic" or "ccor")
 #' @return Numeric recovery measure
 #' @noRd
-#' @keywords internal
 measurefun <- function(hH, H, type=c('trace_statistic','ccor')){
   type <- match.arg(type)
   q <- min(ncol(H), ncol(hH))
@@ -977,7 +1058,6 @@ measurefun <- function(hH, H, type=c('trace_statistic','ccor')){
 #' @param H0 True factor matrix
 #' @return Trace statistic value
 #' @noRd
-#' @keywords internal
 trace_statistic_fun <- function(H, H0){
 
   tr_fun <- function(x) sum(diag(x))
@@ -987,14 +1067,40 @@ trace_statistic_fun <- function(H, H0){
 
 }
 
-#' Evaluate Subspace Distance
-#' @description Calculate multiple distance metrics between two subspaces
-#' @param A First subspace matrix
-#' @param B Second subspace matrix
-#' @param orthnm Whether to orthonormalize matrices (default TRUE)
-#' @return Vector of distance metrics
-#' @noRd
-#' @keywords internal
+#' Evaluate Subspace Angles Between Two Matrices
+#'
+#' @description
+#' Calculate the Vector Correlation Coefficient (VCC) and Tucker's Congruence Coefficient (TCC)
+#' between two matrices to evaluate the similarity of subspaces.
+#'
+#' @param A First matrix (n x k)
+#' @param B Second matrix (n x k)
+#' @param orthnm Logical indicating whether to orthonormalize the matrices (default = TRUE)
+#'
+#' @return A numeric vector of length 2 containing:
+#' \itemize{
+#'   \item VCC: Vector Correlation Coefficient
+#'   \item TCC: Tucker's Congruence Coefficient
+#' }
+#'
+#' @details
+#' This function computes subspace similarity measures commonly used in factor analysis
+#' and matrix factorization to compare estimated and true factor spaces.
+#'
+#' @examples
+#' \donttest{
+#' # Generate example matrices
+#' set.seed(123)
+#' A <- matrix(rnorm(50), 10, 5)
+#' B <- A + matrix(rnorm(50, sd = 0.1), 10, 5)  # Add small noise
+#'
+#' # Calculate subspace angles
+#' angles <- eval.space(A, B, orthnm = TRUE)
+#' print(paste("VCC:", round(angles[1], 4)))
+#' print(paste("TCC:", round(angles[2], 4)))
+#' }
+#'
+#' @export
 eval.space <- function(A, B, orthnm = TRUE)
 {
   if(!is.matrix(A)) A <- as.matrix(A)
@@ -1017,12 +1123,42 @@ eval.space <- function(A, B, orthnm = TRUE)
 
 
 
-#' Evaluate Binary Classification Performance
-#' @description Calculate various performance metrics for variable selection
-#' @param true_vector True selection indicator vector
-#' @param pred_vector Predicted selection indicator vector
-#' @return List containing confusion matrix and performance metrics (accuracy, precision, recall, etc.)
-
+#' Evaluate Variable Selection Performance
+#'
+#' @description
+#' Calculate performance metrics for variable selection including sensitivity,
+#' specificity, and other classification measures.
+#'
+#' @param true_vector True binary vector indicating selected variables (0/1)
+#' @param pred_vector Predicted binary vector indicating selected variables (0/1)
+#'
+#' @return A list containing performance metrics:
+#' \itemize{
+#'   \item sensitivity: True positive rate
+#'   \item specificity: True negative rate
+#'   \item precision: Positive predictive value
+#'   \item f1_score: F1 score
+#'   \item accuracy: Overall accuracy
+#' }
+#'
+#' @details
+#' This function evaluates the performance of variable selection methods by
+#' comparing predicted selections against the true sparse structure.
+#'
+#' @examples
+#' \donttest{
+#' # Generate example selection vectors
+#' set.seed(123)
+#' p <- 100
+#' true_selected <- c(rep(1, 20), rep(0, 80))  # First 20 variables selected
+#' pred_selected <- c(rep(1, 18), rep(0, 2), rep(1, 5), rep(0, 75))  # Some errors
+#'
+#' # Evaluate performance
+#' perf <- evaluate_performance(true_selected, pred_selected)
+#' print(perf)
+#' }
+#'
+#' @export
 evaluate_performance <- function(true_vector, pred_vector) {
   # 确保向量是二进制值（0或1）
   true_binary <- as.integer(true_vector > 0)
