@@ -274,7 +274,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## References
 
-For more detailed information about the methodology and theoretical properties, please refer to the associated research papers and documentation.
+For more detailed information about the methodology and theoretical properties, please refer to the associated research papers and documentation. The related papers are currently under review; we will update the information as soon as they are accepted and published.
 
 ## License
 
