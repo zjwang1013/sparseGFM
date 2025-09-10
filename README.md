@@ -1,18 +1,42 @@
 # sparseGFM: Sparse Generalized Factor Models with Multiple Penalty Functions
 
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![CRAN status](https://www.r-pkg.org/badges/version/sparseGFM)](https://cran.r-project.org/package=sparseGFM)
 
 ## Overview
 
-The `sparseGFM` package provides methods for fitting sparse generalized factor models with various penalty functions. The package is designed to handle high-dimensional data and can adapt to weak factor scenarios, making it suitable for a wide range of applications in statistics and machine learning.
+The `sparseGFM` package provides methods for fitting sparse generalized factor models with various penalty functions. The package is designed to handle high-dimensional data and can adapt to weak factor scenarios, making it suitable for a wide range of applications in statistics and machine learning. 
+
+The package is now available on [CRAN](https://cran.r-project.org/package=sparseGFM) under the name **sparseGFM**.  
 
 ## Installation
 
-You can install the development version from GitHub:
+The package is now available on [CRAN](https://cran.r-project.org/package=sparseGFM) under the name **sparseGFM**.  
+On GitHub, the development version is hosted under the repository name **sparseGFM**.
+
+### From CRAN (stable version)
 
 ```r
+install.packages("sparseGFM")
+
+# Load the package
+library(sparseGFM)
+```
+
+### From GitHub (development version)
+
+You can also install the development version of sparseGFM from GitHub:
+
+```r
+# Install devtools if you haven't already
+install.packages("devtools")
+
+# Install sparseGFM from GitHub
 devtools::install_github("zjwang1013/sparseGFM")
+
+# Load the package
+library(sparseGFM)
 ```
 
 ## Key Features
