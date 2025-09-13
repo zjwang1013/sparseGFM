@@ -3,27 +3,30 @@ Type: Package
 Title: Sparse Generalized Factor Models with Multiple Penalty Functions
 Version: 0.1.0
 Authors@R: person("Zhijing", "Wang", email = "wangzhijing@sjtu.edu.cn", role = c("aut", "cre"))
-Description: Implements sparse generalized factor models (sparseGFM) for dimension reduction 
-    and variable selection in high-dimensional data with automatic adaptation to weak factor 
-    scenarios. The package supports multiple data types (continuous, count, binary) through 
-    generalized linear model frameworks and handles missing values automatically. It provides 
-    12 different penalty functions including Lasso, adaptive Lasso, SCAD, MCP, group Lasso, 
-    and their adaptive versions for inducing row-wise sparsity in factor loadings. Key features 
-    include cross-validation for regularization parameter selection using Sparsity Information 
-    Criteria (SIC), automatic determination of the number of factors via multiple information 
-    criteria, and specialized algorithms for row-sparse loading structures. The methodology 
-    employs alternating minimization with SVD-based identifiability constraints and is 
-    particularly effective for high-dimensional applications in genomics, economics, and 
-    social sciences where interpretable sparse dimension reduction is crucial.
+Description: Implements sparse generalized factor models (sparseGFM) for dimension reduction
+    and variable selection in high-dimensional data with automatic adaptation to weak factor
+    scenarios. The package supports multiple data types (continuous, count, binary) through
+    generalized linear model frameworks and handles missing values automatically. It provides
+    12 different penalty functions including Least Absolute Shrinkage and Selection Operator (Lasso),
+    adaptive Lasso, Smoothly Clipped Absolute Deviation (SCAD), Minimax Concave Penalty (MCP), group Lasso,
+    and their adaptive versions for inducing row-wise sparsity in factor loadings. Key features
+    include cross-validation for regularization parameter selection using Sparsity Information
+    Criterion (SIC), automatic determination of the number of factors via multiple information
+    criteria, and specialized algorithms for row-sparse loading structures. The methodology
+    employs alternating minimization with Singular Value Decomposition (SVD)-based identifiability
+    constraints and is particularly effective for high-dimensional applications in genomics, economics,
+    and social sciences where interpretable sparse dimension reduction is crucial.
+    For penalty functions, see Tibshirani (1996) <doi:10.1111/j.2517-6161.1996.tb02080.x>,
+    Fan and Li (2001) <doi:10.1198/016214501753382273>, and Zhang (2010) <doi:10.1214/09-AOS729>.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
-Imports: 
+Imports:
     stats,
     GFM,
     MASS,
     irlba
-Suggests: 
+Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
